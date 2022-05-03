@@ -29,6 +29,13 @@ const item3 = new Item({
 
 const defaultItems = [item1, item2, item3];
 
+const listSchema = {
+  name: String,
+  items: [itemsSchema],
+};
+
+const List = mongoose.model("List", listSchema);
+
 app.get("/", function (req, res) {
   //ADDING DEFAULT ITEMS
   Item.find({}, function (err, foundItems) {
@@ -70,6 +77,36 @@ app.post("/delete", function (req, res) {
       res.redirect("/");
     }
   });
+});
+
+app.get("/:pageName", function (req, res) {
+  const customPageName = req.params.pageName;
+
+  List.findOne(
+    {
+      name: customPageName,
+    },
+    function (err, existingList) {
+      if (!err) {
+        if (!existingList) {
+          //create new list
+          const list = new List({
+            name: customPageName,
+            items: defaultItems,
+          });
+
+          list.save();
+          res.redirect("/" + customPageName);
+        } else {
+          //show existing list
+          res.render("list", {
+            listTitle: existingList.name,
+            newListItems: existingList.items,
+          });
+        }
+      }
+    }
+  );
 });
 
 app.get("/work", function (req, res) {
