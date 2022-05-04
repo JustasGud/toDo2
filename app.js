@@ -1,6 +1,7 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
+const _ = require("lodash");
 
 const app = express();
 
@@ -58,29 +59,52 @@ app.get("/", function (req, res) {
 
 app.post("/", function (req, res) {
   const itemName = req.body.newItem;
+  const listName = req.body.list;
 
   const item = new Item({
     name: itemName,
   });
 
-  item.save();
-  res.redirect("/");
+  if (listName === "Today") {
+    item.save();
+    res.redirect("/");
+  } else {
+    List.findOne({ name: listName }, function (err, foundList) {
+      foundList.items.push(item);
+      foundList.save();
+      res.redirect("/" + listName);
+    });
+  }
 });
 
 app.post("/delete", function (req, res) {
   const checkedItenId = req.body.checkBox;
-  Item.findByIdAndRemove(checkedItenId, function (err) {
-    if (err) {
-      console.log(err);
-    } else {
-      console.log("Succesfully deleted!");
-      res.redirect("/");
-    }
-  });
-});
+  const listName = req.body.listName;
 
+  if (listName === "Today") {
+    Item.findByIdAndRemove(checkedItenId, function (err) {
+      if (err) {
+        console.log(err);
+      } else {
+        console.log("Succesfully deleted!");
+        res.redirect("/");
+      }
+    });
+  } else {
+    List.findOneAndUpdate(
+      { name: listName },
+      { $pull: { items: { _id: checkedItenId } } },
+      function (err, foundList) {
+        if (!err) {
+          res.redirect("/" + listName);
+        }
+      }
+    );
+  }
+});
+// CREATING NEW LISTS BY THE ENTERED URL EXTENTION
 app.get("/:pageName", function (req, res) {
-  const customPageName = req.params.pageName;
+  const customPageName = _.capitalize(req.params.pageName);
 
   List.findOne(
     {
